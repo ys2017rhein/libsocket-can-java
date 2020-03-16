@@ -1,14 +1,40 @@
-.*
-*.orig
-*~
-\#*#
+# Prerequisites
+*.d
 
-!.gitignore
-!/.classpath
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
 
-/classes
-/classes.test
-/dist
-/lib
-/stamps
-/jni/*.h
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# JNI stuff:
+*.class
+*.so
+/.DS_Store
+/target/
+/bin/
+/bintest/

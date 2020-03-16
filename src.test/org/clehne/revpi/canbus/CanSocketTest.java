@@ -1,4 +1,4 @@
-package de.entropia.can;
+package org.clehne.revpi.canbus;
 
 import java.io.IOException;
 import java.lang.annotation.ElementType;
@@ -7,14 +7,14 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Method;
 
-import de.entropia.can.CanSocket.CanFrame;
-import de.entropia.can.CanSocket.CanId;
-import de.entropia.can.CanSocket.CanInterface;
-import de.entropia.can.CanSocket.Mode;
+import org.clehne.revpi.canbus.CanSocket.CanFrame;
+import org.clehne.revpi.canbus.CanSocket.CanId;
+import org.clehne.revpi.canbus.CanSocket.CanInterface;
+import org.clehne.revpi.canbus.CanSocket.Mode;
 
 public class CanSocketTest {
 
-    private static final String CAN_INTERFACE = "vcan0";
+    private static final String CAN_INTERFACE = "can0";
     
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD})
@@ -132,6 +132,38 @@ public class CanSocketTest {
                     new CanId(0x5), new byte[] {0,0,0,0,0,0,0,0}));
         }
     }
+
+//    @Test
+    public void testRecvNonBlockingFor5s() throws IOException {
+    	
+        try (final CanSocket socket = new CanSocket(Mode.RAW)) {
+            socket.bind(CanSocket.CAN_ALL_INTERFACES);
+            socket.setReceiveTimeout(5, 0);
+            try {
+            	CanFrame f = socket.recv();
+            	System.out.println("socket returned " + f);
+            }catch(Exception e) {
+            	System.out.println("socket returned exception e " + e.getMessage());
+            }
+        }
+    }
+
+    @Test
+    public void testRecvNonBlockingForPoint5s() throws IOException {
+    	
+        try (final CanSocket socket = new CanSocket(Mode.RAW)) {
+            socket.bind(CanSocket.CAN_ALL_INTERFACES);
+            socket.setReceiveTimeout(0, 500000);
+            try {
+            	CanFrame f = socket.recv();
+            	System.out.println("socket returned " + f);
+            }catch(Exception e) {
+            	System.out.println("socket returned exception e " + e.getMessage());
+            }
+        }
+    }
+	
+
     
 //    @Test
     public void testRecv() throws IOException {
@@ -153,7 +185,7 @@ public class CanSocketTest {
 	    }
 	}
     }
-
+    
     @Test
     public void testSockOpts() throws IOException {
         try (final CanSocket socket = new CanSocket(Mode.RAW)) {

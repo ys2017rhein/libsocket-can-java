@@ -4,5 +4,6 @@ Bundle-Name: libsocket-can-java
 Bundle-SymbolicName: libsocket-can-java
 Bundle-Description: SocketCAN JNI wrapper
 Bundle-Version: 0.1.0
-Export-Package: de.entropia.can
-Import-Package: de.entropia.can
+Export-Package: org.clehne.revpi.canbus 
+Import-Package: org.clehne.revpi.canbus
+
