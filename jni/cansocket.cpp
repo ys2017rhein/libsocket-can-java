@@ -211,7 +211,7 @@ JNIEXPORT jobject JNICALL Java_org_clehne_revpi_canbus_CanSocket__1recvFrame(
 	const jsize fsize = static_cast<jsize>(std::min(
 			static_cast<size_t>(frame.can_dlc),
 			static_cast<size_t>(nbytes - offsetof(struct can_frame, data))));
-	const jclass can_frame_clazz = env->FindClass("org/waal70/canbus/"
+	const jclass can_frame_clazz = env->FindClass("org/clehne/revpi/canbus/"
 			"CanSocket$CanFrame");
 	if (can_frame_clazz == NULL) {
 		return NULL;
