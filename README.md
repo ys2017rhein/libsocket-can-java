@@ -1,4 +1,4 @@
-# Revolution Pi libsocket CAN JNI wrapper
+# RevolutionPi libsocket CAN JNI wrapper
 
 Simple JNI wrapper to access the Kunbus RevolutionPi CAN hardware from within Java  
 
@@ -32,7 +32,7 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 * **waal70** - *initial* - 
 * **entropia** - *adoptions, CAN filter,...* - 
-* **C. Lehne** - *very few and minor changes, mainly for buildprocess *
+* **C. Lehne** - *minor changes, mainly for buildprocess *
 
 
 ## Acknowledgments
