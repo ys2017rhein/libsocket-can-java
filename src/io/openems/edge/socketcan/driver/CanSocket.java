@@ -1,4 +1,4 @@
-package org.clehne.revpi.canbus;
+package io.openems.edge.socketcan.driver;
 
 //Taken from: https://github.com/entropia/libsocket-can-java
 

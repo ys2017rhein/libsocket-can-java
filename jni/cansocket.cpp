@@ -1,36 +1,31 @@
-#include<string>
-#include<algorithm>
-#include<utility>
+#include <string>
+#include <algorithm>
+#include <utility>
 
-#include<cstring>
-#include<cstddef>
-#include<cerrno>
-#include<syslog.h>
+#include <cstring>
+#include <cstddef>
+#include <cerrno>
+#include <syslog.h>
 
-#include<sstream>
-#include<string.h>
+#include <sstream>
+#include <string.h>
 
 #include <vector>
 #include <climits>
 #include <memory>
 
 extern "C" {
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
+	#include <sys/types.h>
+	#include <sys/socket.h>
+	#include <sys/ioctl.h>
+	#include <unistd.h>
 
-#include <net/if.h>
-#include <linux/can.h>
-#include <linux/can/raw.h>
-
+	#include <net/if.h>
+	#include <linux/can.h>
+	#include <linux/can/raw.h>
 }
 
-//#ifdef (ANDROID) || defined(__ANDROID__)
-//#include "jni.h"
-//#else
-#include "org_clehne_revpi_canbus_CanSocket.h"
-//#endif
+#include "io_openems_edge_socketcan_driver_CanSocket.h"
 
 static const int ERRNO_BUFFER_LEN = 1024;
 

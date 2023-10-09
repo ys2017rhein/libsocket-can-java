@@ -1,4 +1,4 @@
-package org.clehne.revpi.canbus;
+package io.openems.edge.socketcan.driver;
 
 import java.io.IOException;
 import java.lang.annotation.ElementType;
@@ -7,10 +7,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Method;
 
-import org.clehne.revpi.canbus.CanSocket.CanFrame;
-import org.clehne.revpi.canbus.CanSocket.CanId;
-import org.clehne.revpi.canbus.CanSocket.CanInterface;
-import org.clehne.revpi.canbus.CanSocket.Mode;
+import io.openems.edge.socketcan.driver.CanSocket.CanFrame;
+import io.openems.edge.socketcan.driver.CanSocket.CanId;
+import io.openems.edge.socketcan.driver.CanSocket.CanInterface;
+import io.openems.edge.socketcan.driver.CanSocket.Mode;
 
 public class CanSocketTest {
 
