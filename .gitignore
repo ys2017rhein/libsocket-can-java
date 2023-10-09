@@ -1,6 +1,6 @@
 # Prerequisites
 *.d
-
+stamps
 # Compiled Object files
 *.slo
 *.lo
@@ -38,3 +38,4 @@
 /target/
 /bin/
 /bintest/
+classes/io_openems_edge_socketcan_driver_CanSocket.h
