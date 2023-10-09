@@ -40,6 +40,7 @@ clean:
 		$(RM) -r $(DIRS) $(STAMPS) $(filter %.h,$(JNI_SRC))
 		$(RM) -r $(JNI_DIR)/*.h
 		$(RM) -r $(JNI_DIR)/*.gch
+		find . -name "*.class" -exec rm {} \;  
 
 stamps/dirs:
 		mkdir $(DIRS)
