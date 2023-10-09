@@ -46,7 +46,7 @@ stamps/dirs:
 		@touch $@
 
 stamps/compile-src: stamps/dirs $(JAVA_SRC)
-	@echo "Compile java"
+	@echo "JAVAC JAVA"
 	$(JAVAC) $(JAVAC_FLAGS) -d $(JAVA_DEST) $(sort $(JAVA_SRC))
 	@touch $@
 
@@ -67,8 +67,9 @@ stamps/compile-jni: stamps/generate-jni-h $(JNI_SRC)
 	@touch $@
         
 stamps/create-jar: stamps/compile-jni $(JAR_MANIFEST_FILE)
-		$(JAR) cMf $(JAR_DEST_FILE) $(JAR_MANIFEST_FILE) lib -C $(JAVA_DEST) .
-		@touch $@
+	@echo "JAVAC JAR"
+	$(JAR) cMf $(JAR_DEST_FILE) $(JAR_MANIFEST_FILE) lib -C $(JAVA_DEST) .
+	@touch $@
 
 .PHONY: check
 check: stamps/create-jar stamps/compile-test
