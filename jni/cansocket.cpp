@@ -15,64 +15,30 @@
 #include <memory>
 
 extern "C" {
-	#include <sys/types.h>
-	#include <sys/socket.h>
-	#include <sys/ioctl.h>
-	#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
-	#include <net/if.h>
-	#include <linux/can.h>
-	#include <linux/can/raw.h>
+#include <net/if.h>
+#include <linux/can.h>
+#include <linux/can/raw.h>
+
 }
 
-#include "io_openems_edge_socketcan_driver_CanSocket.h"
+//#ifdef (ANDROID) || defined(__ANDROID__)
+//#include "jni.h"
+//#else
+#include "org_clehne_revpi_canbus_CanSocket.h"
+//#endif
 
-static const int ERRNO_BUFFER_LEN = 1024;
+#include "cansocket.hpp"
+
 
 typedef unsigned char BYTE;
 
-static void throwException(JNIEnv *env, const std::string& exception_name,
-		const std::string& msg) {
-	const jclass exception = env->FindClass(exception_name.c_str());
-	if (exception == NULL) {
-		return;
-	}
-	env->ThrowNew(exception, msg.c_str());
-}
-
-static void throwIOExceptionMsg(JNIEnv *env, const std::string& msg) {
-	throwException(env, "java/io/IOException", msg);
-}
-
-static void throwIOExceptionErrno(JNIEnv *env, const int exc_errno) {
-	char message[ERRNO_BUFFER_LEN];
-	const char * const msg = (char *) strerror_r(exc_errno, message,
-			ERRNO_BUFFER_LEN);
-	if (((long) msg) == 0) {
-		// POSIX strerror_r, success
-		throwIOExceptionMsg(env, std::string(message));
-	} else if (((long) msg) == -1) {
-		// POSIX strerror_r, failure
-		// (Strictly, POSIX only guarantees a value other than 0. The safest
-		// way to implement this function is to use C++ and overload on the
-		// type of strerror_r to accurately distinguish GNU from POSIX. But
-		// realistic implementations will always return -1.)
-		snprintf(message, ERRNO_BUFFER_LEN, "errno %d", exc_errno);
-		throwIOExceptionMsg(env, std::string(message));
-	} else {
-		// glibc strerror_r returning a string
-		throwIOExceptionMsg(env, std::string(msg));
-	}
-}
-
-static void throwIllegalArgumentException(JNIEnv *env,
-		const std::string& message) {
-	throwException(env, "java/lang/IllegalArgumentException", message);
-}
-
-static void throwOutOfMemoryError(JNIEnv *env, const std::string& message) {
-	throwException(env, "java/lang/OutOfMemoryError", message);
-}
+static int statsErrorCntrSend = 0;
+static int statsErrorCntrReceive = 0;
 
 static jint newCanSocket(JNIEnv *env, int socket_type, int protocol) {
 	const int fd = socket(PF_CAN, socket_type, protocol);
@@ -83,17 +49,17 @@ static jint newCanSocket(JNIEnv *env, int socket_type, int protocol) {
 	return -1;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1openSocketRAW(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1openSocketRAW(
 		JNIEnv *env, jclass obj) {
 	return newCanSocket(env, SOCK_RAW, CAN_RAW);
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1openSocketBCM(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1openSocketBCM(
 		JNIEnv *env, jclass obj) {
 	return newCanSocket(env, SOCK_DGRAM, CAN_BCM);
 }
 
-JNIEXPORT void JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1close
+JNIEXPORT void JNICALL Java_org_clehne_revpi_canbus_CanSocket__1close
 (JNIEnv *env, jclass obj, jint fd)
 {
 	if (close(fd) == -1) {
@@ -101,7 +67,7 @@ JNIEXPORT void JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1close
 	}
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1discoverInterfaceIndex(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1discoverInterfaceIndex(
 		JNIEnv *env, jclass clazz, jint socketFd, jstring ifName) {
 	struct ifreq ifreq;
 	const jsize ifNameSize = env->GetStringUTFLength(ifName);
@@ -126,7 +92,7 @@ JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1discove
 	}
 }
 
-JNIEXPORT jstring JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1discoverInterfaceName(
+JNIEXPORT jstring JNICALL Java_org_clehne_revpi_canbus_CanSocket__1discoverInterfaceName(
 		JNIEnv *env, jclass obj, jint fd, jint ifIdx) {
 	struct ifreq ifreq;
 	memset(&ifreq, 0x0, sizeof(ifreq));
@@ -139,7 +105,7 @@ JNIEXPORT jstring JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1disc
 	return ifname;
 }
 
-JNIEXPORT void JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1bindToSocket
+JNIEXPORT void JNICALL Java_org_clehne_revpi_canbus_CanSocket__1bindToSocket
 (JNIEnv *env, jclass obj, jint fd, jint ifIndex)
 {
 	struct sockaddr_can addr;
@@ -150,7 +116,7 @@ JNIEXPORT void JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1bindToS
 	}
 }
 
-JNIEXPORT void JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1sendFrame
+JNIEXPORT void JNICALL Java_org_clehne_revpi_canbus_CanSocket__1sendFrame
 (JNIEnv *env, jclass obj, jint fd, jint if_idx, jint canid, jbyteArray data)
 {
 	const int flags = 0;
@@ -175,13 +141,15 @@ JNIEXPORT void JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1sendFra
 			reinterpret_cast<struct sockaddr *>(&addr),
 			sizeof(addr));
 	if (nbytes == -1) {
+		statsErrorCntrSend++;
 		throwIOExceptionErrno(env, errno);
 	} else if (nbytes != sizeof(frame)) {
+		statsErrorCntrSend++;
 		throwIOExceptionMsg(env, "send partial frame");
 	}
 }
 
-JNIEXPORT jobject JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1recvFrame(
+JNIEXPORT jobject JNICALL Java_org_clehne_revpi_canbus_CanSocket__1recvFrame(
 		JNIEnv *env, jclass obj, jint fd) {
 	const int flags = 0;
 	ssize_t nbytes;
@@ -193,6 +161,7 @@ JNIEXPORT jobject JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1recv
 	nbytes = recvfrom(fd, &frame, sizeof(frame), flags,
 			reinterpret_cast<struct sockaddr *>(&addr), &len);
 	if (len != sizeof(addr)) {
+		statsErrorCntrReceive++;
 		throwIllegalArgumentException(env, "illegal AF_CAN address");
 		return NULL;
 	}
@@ -200,6 +169,7 @@ JNIEXPORT jobject JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1recv
 		throwIOExceptionErrno(env, errno);
 		return NULL;
 	} else if (nbytes != sizeof(frame)) {
+		statsErrorCntrReceive++;
 		throwIOExceptionMsg(env, "invalid length of received frame");
 		return NULL;
 	}
@@ -233,7 +203,7 @@ JNIEXPORT jobject JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1recv
 	return ret;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1fetchInterfaceMtu(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1fetchInterfaceMtu(
 		JNIEnv *env, jclass obj, jint fd, jstring ifName) {
 	struct ifreq ifreq;
 
@@ -255,7 +225,7 @@ JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1fetchIn
 	}
 }
 
-JNIEXPORT void JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1setsockopt
+JNIEXPORT void JNICALL Java_org_clehne_revpi_canbus_CanSocket__1setsockopt
 (JNIEnv *env, jclass obj, jint fd, jint op, jint stat)
 {
 	const int _stat = stat;
@@ -265,7 +235,7 @@ JNIEXPORT void JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1setsock
 }
 
 
-JNIEXPORT void JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1setreceivetimeout
+JNIEXPORT void JNICALL Java_org_clehne_revpi_canbus_CanSocket__1setreceivetimeout
 (JNIEnv *env, jclass obj, jint fd, jint sec, jint usec)
 {
 	timeval tv;
@@ -279,7 +249,7 @@ JNIEXPORT void JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1setrece
 
 
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1getsockopt(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1getsockopt(
 		JNIEnv *env, jclass obj, jint fd, jint op) {
 	int _stat = 0;
 	socklen_t len = sizeof(_stat);
@@ -296,100 +266,100 @@ JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1getsock
 
 /*** constants ***/
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1fetch_1CAN_1MTU(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1fetch_1CAN_1MTU(
 		JNIEnv *env, jclass obj) {
 	return CAN_MTU;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1fetch_1CAN_1FD_1MTU(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1fetch_1CAN_1FD_1MTU(
 		JNIEnv *env, jclass obj) {
 	return CANFD_MTU;
 }
 
 /*** ioctls ***/
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1fetch_1CAN_1RAW_1FILTER(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1fetch_1CAN_1RAW_1FILTER(
 		JNIEnv *env, jclass obj) {
 	return CAN_RAW_FILTER;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1fetch_1CAN_1RAW_1ERR_1FILTER(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1fetch_1CAN_1RAW_1ERR_1FILTER(
 		JNIEnv *env, jclass obj) {
 	return CAN_RAW_ERR_FILTER;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1fetch_1CAN_1RAW_1LOOPBACK(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1fetch_1CAN_1RAW_1LOOPBACK(
 		JNIEnv *env, jclass obj) {
 	return CAN_RAW_LOOPBACK;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1fetch_1CAN_1RAW_1RECV_1OWN_1MSGS(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1fetch_1CAN_1RAW_1RECV_1OWN_1MSGS(
 		JNIEnv *env, jclass obj) {
 	return CAN_RAW_RECV_OWN_MSGS;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1fetch_1CAN_1RAW_1FD_1FRAMES(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1fetch_1CAN_1RAW_1FD_1FRAMES(
 		JNIEnv *env, jclass obj) {
 	return CAN_RAW_FD_FRAMES;
 }
 
 /*** ADR MANIPULATION FUNCTIONS ***/
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1getCANID_1SFF(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1getCANID_1SFF(
 		JNIEnv *env, jclass obj, jint canid) {
 	return canid & CAN_SFF_MASK;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1getCANID_1EFF(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1getCANID_1EFF(
 		JNIEnv *env, jclass obj, jint canid) {
 	return canid & CAN_EFF_MASK;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1getCANID_1ERR(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1getCANID_1ERR(
 		JNIEnv *env, jclass obj, jint canid) {
 	return canid & CAN_ERR_MASK;
 }
 
-JNIEXPORT jboolean JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1isSetEFFSFF(
+JNIEXPORT jboolean JNICALL Java_org_clehne_revpi_canbus_CanSocket__1isSetEFFSFF(
 		JNIEnv *env, jclass obj, jint canid) {
 	return (canid & CAN_EFF_FLAG) != 0 ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jboolean JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1isSetRTR(
+JNIEXPORT jboolean JNICALL Java_org_clehne_revpi_canbus_CanSocket__1isSetRTR(
 		JNIEnv *env, jclass obj, jint canid) {
 	return (canid & CAN_RTR_FLAG) != 0 ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jboolean JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1isSetERR(
+JNIEXPORT jboolean JNICALL Java_org_clehne_revpi_canbus_CanSocket__1isSetERR(
 		JNIEnv *env, jclass obj, jint canid) {
 	return (canid & CAN_ERR_FLAG) != 0 ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1setEFFSFF(JNIEnv *env,
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1setEFFSFF(JNIEnv *env,
 		jclass obj, jint canid) {
 	return canid | CAN_EFF_FLAG;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1setRTR(JNIEnv *env,
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1setRTR(JNIEnv *env,
 		jclass obj, jint canid) {
 	return canid | CAN_RTR_FLAG;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1setERR(JNIEnv *env,
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1setERR(JNIEnv *env,
 		jclass obj, jint canid) {
 	return canid | CAN_ERR_FLAG;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1clearEFFSFF(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1clearEFFSFF(
 		JNIEnv *env, jclass obj, jint canid) {
 	return canid & ~CAN_EFF_FLAG;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1clearRTR(JNIEnv *env,
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1clearRTR(JNIEnv *env,
 		jclass obj, jint canid) {
 	return canid & ~CAN_RTR_FLAG;
 }
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1clearERR(JNIEnv *env,
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1clearERR(JNIEnv *env,
 		jclass obj, jint canid) {
 	return canid & ~CAN_ERR_FLAG;
 }
@@ -398,17 +368,9 @@ size_t getCopySize(size_t sourceSize, size_t destSize) {
 	return (destSize <= sourceSize ? destSize : sourceSize);
 }
 
-void logthis(std::string msg) {
-	openlog("libsocket-can-java native library ", LOG_CONS, LOG_USER);
-	std::stringstream strs;
-	strs << msg;
-	std::string temp_str = strs.str();
-	char* char_type = (char*) temp_str.c_str();
-	syslog(LOG_INFO, char_type);
 
-}
 
-JNIEXPORT jbyteArray JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1getFilters(
+JNIEXPORT jbyteArray JNICALL Java_org_clehne_revpi_canbus_CanSocket__1getFilters(
 		JNIEnv *env, jclass obj, jint sock) {
 
 	std::string s; //for logging purposes
@@ -467,7 +429,7 @@ JNIEXPORT jbyteArray JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1g
 }
 
 
-JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1setFilters(
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1setFilters(
 		JNIEnv *env, jclass obj, jint sock, jstring data) {
 
 	std::string s; //for logging purposes
@@ -548,5 +510,102 @@ JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1setFilt
 	return result;
 }
 
+
+
+JNIEXPORT void JNICALL Java_org_clehne_revpi_canbus_CanSocket__1sendCyclicallyAdd
+(JNIEnv *env, jclass obj, jint fd, jint if_idx, jint canid, jbyteArray data, jint cycleTime)
+{
+	const jsize len = env->GetArrayLength(data);
+	if (env->ExceptionCheck() == JNI_TRUE) {
+		return;
+	}
+	jbyte buffer[8];
+	env->GetByteArrayRegion(data, 0, len, reinterpret_cast<jbyte *>(buffer));
+	if (env->ExceptionCheck() == JNI_TRUE) {
+		return;
+	}
+	if(cyclicalTaskAddCanFrame(fd, if_idx, canid, len, buffer, cycleTime )){
+		throwIOExceptionMsg(env, "Frame can not be added to cyclial send task");
+	}
+}
+
+
+
+JNIEXPORT void JNICALL Java_org_clehne_revpi_canbus_CanSocket__1sendCyclicallyRemove
+(JNIEnv *env, jclass obj, jint fd, jint if_idx, jint canid, jbyteArray data)
+{
+	if(cyclicalTaskRemoveCanFrame(canid)){
+		throwIOExceptionMsg(env, "Frame can not be removed from cyclial send task");
+	}
+}
+
+
+JNIEXPORT void JNICALL Java_org_clehne_revpi_canbus_CanSocket__1removeCyclicalAll
+(JNIEnv *env, jclass obj, jint fd)
+{
+	if(cyclicalTaskRemoveAll()){
+		throwIOExceptionMsg(env, "cyclial send task can not be cleared");
+	}
+}
+
+
+
+
+
+JNIEXPORT void JNICALL Java_org_clehne_revpi_canbus_CanSocket__1sendCyclicallyAdopt
+(JNIEnv *env, jclass obj, jint fd, jint if_idx, jint canid, jbyteArray data)
+{
+
+	const jsize len = env->GetArrayLength(data);
+	if (env->ExceptionCheck() == JNI_TRUE) {
+		return;
+	}
+	jbyte buffer[8];
+	env->GetByteArrayRegion(data, 0, len, reinterpret_cast<jbyte *>(buffer));
+	if (env->ExceptionCheck() == JNI_TRUE) {
+		return;
+	}
+	if(cyclicalTaskAdoptCanFrame(canid, len, buffer)){
+		throwIOExceptionMsg(env, "Frame can not be added to cyclial send task");
+	}
+
+}
+
+/** NOTE: this is a proprietary and special method, it provides vendor dependant code and should not be part of this library */
+JNIEXPORT void JNICALL Java_org_clehne_revpi_canbus_CanSocket__1enableCyclicallyAutoIncrement
+  (JNIEnv *env, jclass obj, jint fd, jint canAddress, jint auoIncrementBytePos)
+{
+	if(cyclicalAutoIncrementAddFunctionality(canAddress, auoIncrementBytePos)){
+		throwIOExceptionMsg(env, "CAN address can not be added as cyclical autoincrement mechanism");
+	}
+}
+
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1statsGetCanFrameErrorCntrCyclicalSend
+  (JNIEnv *env, jclass obj, jint fd)
+{
+	jint result = statsGetCanFrameErrorCntrCyclicalSend();
+	return result;
+}
+
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1statsGetCanFrameErrorCntrSend
+	(JNIEnv *env, jclass obj, jint fd)
+{
+	jint result = statsErrorCntrSend;
+	return result;
+}
+
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1statsGetCanFrameErrorCntrReceive
+	(JNIEnv *env, jclass obj, jint fd)
+{
+	jint result = statsErrorCntrReceive;
+	return result;
+}
+
+JNIEXPORT jint JNICALL Java_org_clehne_revpi_canbus_CanSocket__1statsGetCanFrameFramesSendPerCycle
+	(JNIEnv *env, jclass obj, jint fd)
+{
+	jint result = statsGetCanFrameFramesSendPerCycle();
+	return result;
+}
 
 
