@@ -81,7 +81,7 @@ JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1discove
 		JNIEnv *env, jclass clazz, jint socketFd, jstring ifName) {
 	struct ifreq ifreq;
 	const jsize ifNameSize = env->GetStringUTFLength(ifName);
-	if (ifNameSize > IFNAMSIZ - 1) {
+	if (ifNameSize > IFNAMSIZ - 1 || ifNameSize < 1) {
 		throwIllegalArgumentException(env, "illegal interface name");
 		return -1;
 	}
@@ -90,6 +90,7 @@ JNIEXPORT jint JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1discove
 	memset(&ifreq, 0x0, sizeof(ifreq));
 	env->GetStringUTFRegion(ifName, 0, ifNameSize, ifreq.ifr_name);
 	if (env->ExceptionCheck() == JNI_TRUE) {
+		printf("Error while getting interface name from java.");
 		return -1;
 	}
 	/* discover interface id */

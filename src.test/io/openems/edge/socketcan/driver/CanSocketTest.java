@@ -14,7 +14,7 @@ import io.openems.edge.socketcan.driver.CanSocket.Mode;
 
 public class CanSocketTest {
 
-    private static final String CAN_INTERFACE = "can0";
+    private static final String CAN_INTERFACE = "vcan0";
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ ElementType.METHOD })
@@ -30,7 +30,7 @@ public class CanSocketTest {
     private static void miscTests() throws IOException {
         final CanId id = new CanId(0x30001).setEFFSFF();
         try (final CanSocket s = new CanSocket(Mode.RAW)) {
-            final CanInterface canif = new CanInterface(s, "vcan0");
+            final CanInterface canif = new CanInterface(s, CAN_INTERFACE);
             s.bind(canif);
             s.send(new CanFrame(canif, id, new byte[] { 0,
                     (byte) 0x91 }));
