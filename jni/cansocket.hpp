@@ -12,8 +12,9 @@
 //#ifdef (ANDROID) || defined(__ANDROID__)
 //#include "jni.h"
 //#else
-#include "org_clehne_revpi_canbus_CanSocket.h"
+#include "io_openems_edge_socketcan_driver_CanSocket.h"
 //#endif
+
 
 void logthis(std::string msg);
 
@@ -23,7 +24,7 @@ void throwIOExceptionErrno(JNIEnv *env, const int exc_errno);
 void throwIllegalArgumentException(JNIEnv *env, const std::string& message);
 void throwOutOfMemoryError(JNIEnv *env, const std::string& message);
 
-
+void cyclicalInitLowLevelThread(void);
 int cyclicalTaskAddCanFrame(jint fd, jint if_idx, jint canid, jint len, jbyte *buffer, jint cylceTime);
 int cyclicalTaskRemoveCanFrame(jint canid);
 int cyclicalTaskAdoptCanFrame(jint canid, jint len, jbyte *buffer);

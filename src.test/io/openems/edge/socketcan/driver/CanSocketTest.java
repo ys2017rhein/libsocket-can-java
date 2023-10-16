@@ -15,29 +15,31 @@ import io.openems.edge.socketcan.driver.CanSocket.Mode;
 public class CanSocketTest {
 
     private static final String CAN_INTERFACE = "can0";
-    
+
     @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.METHOD})
-    @interface Test { /* EMPTY */ }
+    @Target({ ElementType.METHOD })
+    @interface Test {
+        /* EMPTY */ }
 
     public static void main(String[] args) throws IOException {
-	startTests();
-//	miscTests();
+        startTests();
+        // miscTests();
     }
-    
+
     @SuppressWarnings("unused")
     private static void miscTests() throws IOException {
-	final CanId id = new CanId(0x30001).setEFFSFF();
-	try (final CanSocket s = new CanSocket(Mode.RAW)) {
-	    final CanInterface canif = new CanInterface(s, "slcan0");
-	    s.bind(canif);
-	    s.send(new CanFrame(canif, id, new byte[] {0,
-		(byte) 0x91}));
-	    System.out.println(s.recv());
-	}
+        final CanId id = new CanId(0x30001).setEFFSFF();
+        try (final CanSocket s = new CanSocket(Mode.RAW)) {
+            final CanInterface canif = new CanInterface(s, "vcan0");
+            s.bind(canif);
+            s.send(new CanFrame(canif, id, new byte[] { 0,
+                    (byte) 0x91 }));
+            System.out.println(s.recv());
+        }
     }
-    
+
     private static void startTests() {
+        System.out.println("\n\nStarting tests");
         final CanSocketTest dummy = new CanSocketTest();
         boolean succeeded = true;
         for (Method testMethod : CanSocketTest.class.getMethods()) {
@@ -58,7 +60,7 @@ public class CanSocketTest {
             System.exit(-1);
         }
     }
-    
+
     @Test
     public void testSocketCanRawCreate() throws IOException {
         new CanSocket(Mode.RAW).close();
@@ -68,7 +70,7 @@ public class CanSocketTest {
     public void testSocketCanBcmCreate() throws IOException {
         new CanSocket(Mode.BCM).close();
     }
-    
+
     @Test
     public void testFlags() {
         final CanId id_0 = new CanId(0);
@@ -76,36 +78,36 @@ public class CanSocketTest {
         assert !id_0.isSetEFFSFF();
         assert !id_0.isSetRTR();
         assert !id_0.isSetERR();
-        
+
         assert id_f.isSetEFFSFF();
         assert id_f.isSetRTR();
         assert id_f.isSetERR();
-        
+
         id_0.setEFFSFF();
         assert id_0.isSetEFFSFF();
         id_0.clearEFFSFF();
         assert !id_0.isSetEFFSFF();
-        
+
         id_0.setRTR();
         assert id_0.isSetRTR();
         id_0.clearRTR();
         assert !id_0.isSetRTR();
-        
+
         id_0.setERR();
         assert id_0.isSetERR();
         id_0.clearERR();
         assert !id_0.isSetERR();
-        
+
         assert id_0.getCanId_EFF() == 0x0;
     }
-    
+
     @Test
     public void testInterface() throws IOException {
         try (final CanSocket socket = new CanSocket(Mode.RAW)) {
             new CanInterface(socket, CAN_INTERFACE);
         }
     }
-    
+
     @Test
     public void testBindInterface() throws IOException {
         try (final CanSocket socket = new CanSocket(Mode.RAW)) {
@@ -113,7 +115,7 @@ public class CanSocketTest {
             socket.bind(canIf);
         }
     }
-    
+
     @Test
     public void testBind2Interface() throws IOException {
         try (final CanSocket socket = new CanSocket(Mode.RAW)) {
@@ -122,70 +124,67 @@ public class CanSocketTest {
             socket.bind(canIf);
         }
     }
-    
+
     @Test
     public void testSend() throws IOException {
         try (final CanSocket socket = new CanSocket(Mode.RAW)) {
             final CanInterface canif = new CanInterface(socket, CAN_INTERFACE);
             socket.bind(canif);
             socket.send(new CanFrame(canif,
-                    new CanId(0x5), new byte[] {0,0,0,0,0,0,0,0}));
+                    new CanId(0x5), new byte[] { 0, 0, 0, 0, 0, 0, 0, 0 }));
         }
     }
 
-//    @Test
+    // @Test
     public void testRecvNonBlockingFor5s() throws IOException {
-    	
+
         try (final CanSocket socket = new CanSocket(Mode.RAW)) {
             socket.bind(CanSocket.CAN_ALL_INTERFACES);
             socket.setReceiveTimeout(5, 0);
             try {
-            	CanFrame f = socket.recv();
-            	System.out.println("socket returned " + f);
-            }catch(Exception e) {
-            	System.out.println("socket returned exception e " + e.getMessage());
+                CanFrame f = socket.recv();
+                System.out.println("socket returned " + f);
+            } catch (Exception e) {
+                System.out.println("socket returned exception e " + e.getMessage());
             }
         }
     }
 
     @Test
     public void testRecvNonBlockingForPoint5s() throws IOException {
-    	
+
         try (final CanSocket socket = new CanSocket(Mode.RAW)) {
             socket.bind(CanSocket.CAN_ALL_INTERFACES);
             socket.setReceiveTimeout(0, 500000);
             try {
-            	CanFrame f = socket.recv();
-            	System.out.println("socket returned " + f);
-            }catch(Exception e) {
-            	System.out.println("socket returned exception e " + e.getMessage());
+                CanFrame f = socket.recv();
+                System.out.println("socket returned " + f);
+            } catch (Exception e) {
+                System.out.println("socket returned exception e " + e.getMessage());
             }
         }
     }
-	
 
-    
-//    @Test
+    // @Test
     public void testRecv() throws IOException {
         try (final CanSocket socket = new CanSocket(Mode.RAW)) {
             socket.bind(CanSocket.CAN_ALL_INTERFACES);
             socket.recv();
         }
     }
-    
+
     @Test
     public void testMtu() throws IOException {
-	try (final CanSocket socket = new CanSocket(Mode.RAW)) {
-	    final CanInterface canInterface =
-		    new CanInterface(socket, CAN_INTERFACE);
-	    socket.bind(canInterface);
-	    final int mtu = socket.getMtu(CAN_INTERFACE);
-	    if (!(mtu == CanSocket.CAN_MTU) && !(mtu == CanSocket.CAN_FD_MTU)) {
-		throw new IOException("illegal interface mtu: " + mtu);
-	    }
-	}
+        try (final CanSocket socket = new CanSocket(Mode.RAW)) {
+            final CanInterface canInterface = new CanInterface(socket, CAN_INTERFACE);
+            socket.bind(canInterface);
+            final int mtu = socket.getMtu(CAN_INTERFACE);
+            if (!(mtu == CanSocket.CAN_MTU) && !(mtu == CanSocket.CAN_FD_MTU)) {
+                throw new IOException("illegal interface mtu: " + mtu);
+            }
+        }
     }
-    
+
     @Test
     public void testSockOpts() throws IOException {
         try (final CanSocket socket = new CanSocket(Mode.RAW)) {

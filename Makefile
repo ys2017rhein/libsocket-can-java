@@ -20,7 +20,7 @@ DIRS=stamps obj $(JAVA_DEST) $(JAVA_TEST_DEST) $(LIB_DEST) $(JAR_DEST)
 JNI_DIR=jni
 JNI_CLASSES=io.openems.edge.socketcan.driver.CanSocket
 JAVAC_FLAGS=-g -Xlint:all
-CXXFLAGS=-I./include -Iclasses -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions \
+CXXFLAGS=-Iclasses -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions \
 	-fstack-protector --param=ssp-buffer-size=4 -fPIC -Wno-unused-parameter \
 	-pedantic -D_REENTRANT -D_GNU_SOURCE \
 	$(JAVA_INCLUDES)
@@ -61,14 +61,21 @@ stamps/generate-jni-h: stamps/compile-src
 	$(JAVAH) classes src/io/openems/edge/socketcan/driver/CanSocket.java 
 	@touch $@
 
-stamps/compile-jni: stamps/generate-jni-h $(JNI_SRC)
-	@echo "CC JNI"
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared -o $(LIB_DEST)/lib$(SONAME).so \
+stamps/compile-jni-4: stamps/generate-jni-h $(JNI_SRC)
+	@echo "CC JNI Linux v4"
+	$(CXX) $(CXXFLAGS) -I./include/linux-4.19 $(LDFLAGS) -shared -o $(LIB_DEST)/lib$(SONAME)_linux4.so \
 		$(sort $(filter %.cpp,$(JNI_SRC)) $(filter %.c,$(JNI_SRC)))
 	@touch $@
-        
-stamps/create-jar: stamps/compile-jni $(JAR_MANIFEST_FILE)
+
+stamps/compile-jni-5: stamps/generate-jni-h $(JNI_SRC)
+	@echo "CC JNI Linux v5"
+	$(CXX) $(CXXFLAGS) -I./include/linux-5.10 $(LDFLAGS) -shared -o $(LIB_DEST)/lib$(SONAME)_linux5.so \
+		$(sort $(filter %.cpp,$(JNI_SRC)) $(filter %.c,$(JNI_SRC)))
+	@touch $@        
+
+stamps/create-jar: stamps/compile-jni-4 stamps/compile-jni-5 $(JAR_MANIFEST_FILE)
 	@echo "JAVAC JAR"
+	$(JAR) cMf $(JAR_DEST_FILE) $(JAR_MANIFEST_FILE) lib -C $(JAVA_DEST) .
 	$(JAR) cMf $(JAR_DEST_FILE) $(JAR_MANIFEST_FILE) lib -C $(JAVA_DEST) .
 	@touch $@
 
@@ -76,4 +83,4 @@ stamps/create-jar: stamps/compile-jni $(JAR_MANIFEST_FILE)
 check: stamps/create-jar stamps/compile-test
 		$(JAVA) -ea -cp $(JAR_DEST_FILE):$(JAVA_TEST_DEST) \
                 -Xcheck:jni \
-                org.clehne.revpi.canbus.CanSocketTest
+				io.openems.edge.socketcan.driver.CanSocketTest

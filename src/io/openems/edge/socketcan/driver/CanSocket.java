@@ -19,27 +19,35 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 //import org.apache.log4j.Logger;
 
 public final class CanSocket implements Closeable {
 	// private static Logger log = Logger.getLogger(CanSocket.class);
 	static {
-//		System.out.println("Trying to load native library");
-		final String LIB_JNI_SOCKETCAN = "jni_socketcan";
+		Pattern v5pattern = Pattern.compile("5\\.\\d+");
+		String LIB_JNI_SOCKETCAN;
+		if (v5pattern.matcher(System.getProperty("os.version")).find()) {
+			System.out.println("Java detected Linux kernel v5");
+			LIB_JNI_SOCKETCAN = "jni_socketcan_linux5";
+		} else {
+			System.out.println("Java detected Linux kernel v4");
+			LIB_JNI_SOCKETCAN = "jni_socketcan_linux4";
+		}
 		try {
-//			System.out.println("Try loadLibrary");
+			System.out.println("Try load from system path...");
 			System.loadLibrary(LIB_JNI_SOCKETCAN);
 		} catch (final UnsatisfiedLinkError e) {
 			try {
-//				System.out.println("Try load from JAR");
+				System.out.println("Try load from JAR...");
 				loadLibFromJar(LIB_JNI_SOCKETCAN);
 			} catch (final IOException _e) {
-//				System.out.println("ERROR: Cannot load CanSocket native library");
+				System.out.println("ERROR: Cannot load CanSocket native library");
 				throw new UnsatisfiedLinkError(LIB_JNI_SOCKETCAN);
 			}
 		}
-//		System.out.println("Succesfully loaded native library");
+		System.out.println("Succesfully loaded native library");
 	}
 
 	private static void copyStream(final InputStream in, final OutputStream out) throws IOException {
@@ -53,7 +61,7 @@ public final class CanSocket implements Closeable {
 	private static void loadLibFromJar(final String libName) throws IOException {
 		Objects.requireNonNull(libName);
 		final String fileName = "/lib/lib" + libName + ".so";
-//		System.out.println("Load from JAR: " + fileName);
+		System.out.println("Load from JAR: " + fileName);
 		final FileAttribute<Set<PosixFilePermission>> permissions = PosixFilePermissions
 				.asFileAttribute(PosixFilePermissions.fromString("rw-------"));
 		final Path tempSo = Files.createTempFile(CanSocket.class.getName(), ".so", permissions);
@@ -67,8 +75,15 @@ public final class CanSocket implements Closeable {
 					copyStream(libstream, fout);
 				}
 			}
+			System.out.println("Unpacking succesful.\nStarting loading from " + tempSo.toAbsolutePath());
 			System.load(tempSo.toString());
+			System.out.println("Loading succesful. Now init.");
+			initCanLibrary();
+			System.err.println("Load from JAR done ---------");
+		} catch(Exception e) {
+			System.out.println("Failed initCanLibrary();");
 		} finally {
+			System.out.println("");
 			Files.delete(tempSo);
 		}
 	}
@@ -87,6 +102,8 @@ public final class CanSocket implements Closeable {
 
 	public static final CanInterface CAN_ALL_INTERFACES = new CanInterface(0);
 
+	private static native void initCanLibrary();
+	
 	private static native int _getCANID_SFF(final int canid);
 
 	private static native int _getCANID_EFF(final int canid);
@@ -134,6 +151,33 @@ public final class CanSocket implements Closeable {
 	private static native void _sendFrame(final int fd, final int canif, final int canid, final byte[] data)
 			throws IOException;
 
+	private static native void _sendCyclicallyAdd(final int fd, final int canif, final int canid, final byte[] data, final int cycleTime)
+			throws IOException;
+
+	private static native void _sendCyclicallyRemove(final int fd, final int canif, final int canid, final byte[] data)
+			throws IOException;
+
+	private static native void _removeCyclicalAll(final int fd) throws IOException;
+
+	private static native void _sendCyclicallyAdopt(final int fd, final int canif, final int canid, final byte[] data)
+			throws IOException;
+
+	private static native void _enableCyclicallyAutoIncrement(final int fd, final int canAddress, final int autoIncrementByteIndex) 
+			throws IOException;
+			
+	private static native int _statsGetCanFrameErrorCntrCyclicalSend(final int fd)
+			throws IOException;
+	
+	private static native int _statsGetCanFrameErrorCntrSend(final int fd)
+			throws IOException;
+	
+	private static native int _statsGetCanFrameErrorCntrReceive(final int fd)
+			throws IOException;
+	
+	private static native int _statsGetCanFrameFramesSendPerCycle(final int fd)
+			throws IOException;
+
+
 	public static final int CAN_MTU = _fetch_CAN_MTU();
 	public static final int CAN_FD_MTU = _fetch_CAN_FD_MTU();
 
@@ -150,7 +194,10 @@ public final class CanSocket implements Closeable {
 	private static native int _setFilters(final int fd, String data);
 
 	private static native byte[] _getFilters(final int fd);
-	
+
+
+
+
 	/**
 	 * @param data contains one filter object. Convenience method to deal with
 	 *             situations where exactly one filter is needed.
@@ -257,7 +304,7 @@ public final class CanSocket implements Closeable {
 	private static native void _setsockopt(final int fd, final int op, final int stat) throws IOException;
 
 	private static native int _getsockopt(final int fd, final int op) throws IOException;
-	
+
 	private static native void _setreceivetimeout(final int fd, final int secs, final int usecs) throws IOException;
 
 
@@ -766,12 +813,12 @@ public final class CanSocket implements Closeable {
 	 * @param _secs
 	 * @param _usecs
 	 * @throws IOException
-	 * 
+	 *
 	 */
 	public void setReceiveTimeout(int _secs, int _usecs) throws IOException {
-		_setreceivetimeout(_fd, _secs, _usecs);	
+		_setreceivetimeout(_fd, _secs, _usecs);
 	}
-	
+
 	public void setSocketOptions(int _stat) throws IOException {
 		_setsockopt(_fd, CAN_RAW_FILTER, _stat);
 	}
@@ -795,4 +842,99 @@ public final class CanSocket implements Closeable {
 	public boolean getRecvOwnMsgsMode() throws IOException {
 		return _getsockopt(_fd, CAN_RAW_RECV_OWN_MSGS) == 1;
 	}
+
+
+
+
+	//enhanced interface to start cyclically CAN send mechanism within the C driver
+
+	/**
+	 * @brief adds the given frame to the native cyclical send task
+	 * @param frame
+	 * @param cycleTime in ms 
+	 * @throws IOException
+	 * 
+	 * @Note library supports only one cycle time, therefore all function calls must use the same cycle time
+	 */
+	public void sendCyclicallyAdd(CanFrame frame, int cycleTime) throws IOException{
+		_sendCyclicallyAdd(_fd, frame.canIf._ifIndex, frame.canId._canId, frame.data, cycleTime);
+	}
+
+	/**
+	 * @brief removes the given frame from the native cyclical send task
+	 * @param frame
+	 * @throws IOException
+	 */
+	public void sendCyclicallyRemove(CanFrame frame) throws IOException{
+		_sendCyclicallyRemove(_fd, frame.canIf._ifIndex, frame.canId._canId, frame.data);
+	}
+
+
+	/**
+	 * @brief adopts the data of the frame already handled by the native cyclical send task
+	 * @param frame
+	 * @throws IOException
+	 */
+	public void sendCyclicallyAdopt(CanFrame frame) throws IOException{
+		_sendCyclicallyAdopt(_fd, frame.canIf._ifIndex, frame.canId._canId, frame.data);
+	}
+
+
+	/**
+	 * @brief removes the given frame from the native cyclical send task
+	 * @param frame
+	 * @throws IOException
+	 */
+	public void removeCyclicalAll() throws IOException{
+		_removeCyclicalAll(_fd);
+	}
+
+	/**
+	 * @brief enables the auto increment option for the given canAddress and the byte at the given position.
+	 * 
+	 * If there is a CAN frame with the given address, then this byte will automatically be incremented
+	 * @param canAddress the address of the CAN frame to use for autoincrement
+	 * @param autoIncrementByteIndex the data position 
+	 * @throws IOException
+	 * @note for some kinds of battery management systems java is to slow to automatically increment the counter (e.g. every 100ms).
+	 * This low lewel method can handle this more time critical
+	 */
+	public void enableCyclicallyAutoIncrement(int canAddress, int autoIncrementByteIndex) throws IOException{
+		_enableCyclicallyAutoIncrement(_fd, canAddress, autoIncrementByteIndex); 
+	}
+	
+	/**
+	 * @brief gets the error counter for error on cyclical send can frames. 
+	 * @throws IOException
+	 */
+	public int statsGetCanFrameErrorCntrCyclicalSend() throws IOException{
+		return _statsGetCanFrameErrorCntrCyclicalSend(_fd);
+	}
+
+	/**
+	 * @brief gets the error counter for errors on regular send can frames. 
+	 * @throws IOException
+	 */
+	public int statsGetCanFrameErrorCntrSend() throws IOException{
+		return _statsGetCanFrameErrorCntrSend(_fd);
+	}
+
+	/**
+	 * @brief gets the error counter for errors on regular received can frames. 
+	 * @throws IOException
+	 */
+	public int statsGetCanFrameErrorCntrReceive() throws IOException{
+		return _statsGetCanFrameErrorCntrReceive(_fd);
+	}
+
+	/**
+	 * @brief gets the framesSendPerCycle counter for cyclical can frames. 
+	 * @throws IOException
+	 */
+	public int statsGetCanFrameFramesSendPerCycle() throws IOException{
+		return _statsGetCanFrameFramesSendPerCycle(_fd);
+	}
+
+	
+	
 }

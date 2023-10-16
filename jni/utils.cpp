@@ -86,7 +86,3 @@ void throwIllegalArgumentException(JNIEnv *env,
 void throwOutOfMemoryError(JNIEnv *env, const std::string& message) {
 	throwException(env, "java/lang/OutOfMemoryError", message);
 }
-
-
-
-

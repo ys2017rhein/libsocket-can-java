@@ -67,7 +67,7 @@ static int statsFramesSendPerCycle = 0;
 void* worker(void *t);
 void sendFrame(CanFrameStorage *frameToSend);
 
-void initThread(void) {
+void cyclicalInitLowLevelThread(void) {
 	pthread_t t;
 
 	//init storage
@@ -103,10 +103,11 @@ int cyclicalAutoIncrementAddFunctionality( jint canid, jint autoIncrementBytePos
  */ 
 void ignoreAutoIncrementPos(jint canid, jbyte *tmpData) {
 	for (int j = 0; j < autoIncrementIdx; j++) {
-		if (canAutoIncrement[j].canid == canid) {
+		if (canAutoIncrement[j].canid == (canid & 0x7fffffff) ) {
 			if( canAutoIncrement[j].bytePos >= 0 && canAutoIncrement[j].bytePos < MAX_CAN_FRAMES_SIZE){
 				//found an autoincrement frame, setting the relevant data byte back to low level autocounter value
 				tmpData[canAutoIncrement[j].bytePos] = canAutoIncrement[j].value;
+//				fprintf(stderr, "CAN Lib: Ignored auto increment %x\n", canid);
 			}
 		}
 	}
@@ -116,12 +117,14 @@ void ignoreAutoIncrementPos(jint canid, jbyte *tmpData) {
  * If found, increment the data value at the given autocounter byte position  
  */ 
 void modifyAutocounters(CanFrameStorage *frameToSend) {
+//	fprintf(stderr, "CAN Lib: modifyAutocounters %x\n", frameToSend->canid);
 	for (int j = 0; j < autoIncrementIdx; j++) {
-		if (frameToSend->canid == canAutoIncrement[j].canid) {
+		if ((frameToSend->canid & 0x7fffffff) == canAutoIncrement[j].canid) {
 			if( canAutoIncrement[j].bytePos >= 0 && canAutoIncrement[j].bytePos < MAX_CAN_FRAMES_SIZE){
 				//found an autoincrement frame, auto incrementing the relevant data byte within the data 
 				canAutoIncrement[j].value += 1;
 				frameToSend->data[canAutoIncrement[j].bytePos] = canAutoIncrement[j].value;
+//				fprintf(stderr, "CAN Lib: auto incremented %x\n", canAutoIncrement[j].canid);
 			}
 		}
 	}
@@ -129,10 +132,10 @@ void modifyAutocounters(CanFrameStorage *frameToSend) {
 
 int cyclicalTaskAddCanFrame(jint fd, jint if_idx, jint canid, jint len,
 		jbyte *buffer, jint _cylceTime) {
-	if (storageIdx == -1) {
-		initThread();
+	if (theOneCycleTime == HARDCODED_100MS && _cylceTime * 1000 != HARDCODED_100MS) {
 		//Note only the first given cycle time is used 
 		theOneCycleTime = _cylceTime * 1000;
+		fprintf(stderr, "CAN Lib: set new cycle time %d us\n", theOneCycleTime);
 	}
 	for (int i = 0; i < storageIdx; i++) {
 		if (canStorage[i].canid == canid) {
@@ -256,6 +259,3 @@ int statsGetCanFrameErrorCntrCyclicalSend() {
 int statsGetCanFrameFramesSendPerCycle(){ 
 	return statsFramesSendPerCycle;
 }
-
-
-
