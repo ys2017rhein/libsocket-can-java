@@ -26,15 +26,14 @@ import java.util.regex.Pattern;
 public final class CanSocket implements Closeable {
 	// private static Logger log = Logger.getLogger(CanSocket.class);
 	static {
-		Pattern v5pattern = Pattern.compile("5\\.\\d+");
+		Pattern v5pattern = Pattern.compile("4\\.\\d+");
 		String LIB_JNI_SOCKETCAN;
 		if (v5pattern.matcher(System.getProperty("os.version")).find()) {
-			System.out.println("Java detected Linux kernel v5");
-			LIB_JNI_SOCKETCAN = "jni_socketcan_linux5";
-		} else {
-			System.out.println("Java detected Linux kernel v4");
 			LIB_JNI_SOCKETCAN = "jni_socketcan_linux4";
+		} else {
+			LIB_JNI_SOCKETCAN = "jni_socketcan_linux5";
 		}
+		System.out.println("Java detected OS version: " + LIB_JNI_SOCKETCAN);
 		try {
 			System.out.println("Try load from system path...");
 			System.loadLibrary(LIB_JNI_SOCKETCAN);
