@@ -1,6 +1,7 @@
 SHELL=/bin/bash
 CXX=g++
 NAME:=libsocket-can-java
+JAVA_HOME:=/usr/lib/jvm/java-17-openjdk-amd64/
 
 JAVA_INCLUDES=-I$(JAVA_HOME)/include/linux -I$(JAVA_HOME)/include
 JAVA=$(JAVA_HOME)/bin/java
@@ -74,6 +75,7 @@ stamps/compile-jni-5: stamps/generate-jni-h $(JNI_SRC)
 	@touch $@        
 
 stamps/create-jar: stamps/compile-jni-4 stamps/compile-jni-5 $(JAR_MANIFEST_FILE)
+	@echo "$(java -version)"
 	@echo "JAVAC JAR"
 	$(JAR) cMf $(JAR_DEST_FILE) $(JAR_MANIFEST_FILE) lib -C $(JAVA_DEST) .
 	$(JAR) cMf $(JAR_DEST_FILE) $(JAR_MANIFEST_FILE) lib -C $(JAVA_DEST) .
