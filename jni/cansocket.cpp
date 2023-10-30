@@ -191,7 +191,7 @@ JNIEXPORT jobject JNICALL Java_io_openems_edge_socketcan_driver_CanSocket__1recv
 	const jsize fsize = static_cast<jsize>(std::min(
 			static_cast<size_t>(frame.can_dlc),
 			static_cast<size_t>(nbytes - offsetof(struct can_frame, data))));
-	const jclass can_frame_clazz = env->FindClass("org/clehne/revpi/canbus/"
+	const jclass can_frame_clazz = env->FindClass("io/openems/edge/socketcan/driver/"
 			"CanSocket$CanFrame");
 	if (can_frame_clazz == NULL) {
 		return NULL;
