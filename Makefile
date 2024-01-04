@@ -1,5 +1,5 @@
 SHELL=/bin/bash
-CXX=g++
+CXX=./zig/zig c++
 NAME:=libsocket-can-java
 JAVA_HOME:=/usr/lib/jvm/java-17-openjdk-amd64/
 
@@ -17,12 +17,12 @@ LIB_DEST=lib
 JAR_DEST=dist
 JAR_DEST_FILE=$(JAR_DEST)/$(NAME).jar
 JAR_MANIFEST_FILE=META-INF/MANIFEST.MF
-DIRS=stamps obj $(JAVA_DEST) $(JAVA_TEST_DEST) $(LIB_DEST) $(JAR_DEST)
+DIRS=stamps obj $(JAVA_DEST) $(JAVA_TEST_DEST) $(LIB_DEST)/x86_64 $(LIB_DEST)/armv7a $(JAR_DEST)
 JNI_DIR=jni
 JNI_CLASSES=io.openems.edge.socketcan.driver.CanSocket
 JAVAC_FLAGS=-g -Xlint:all
 CXXFLAGS=-Iclasses -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions \
-	-fstack-protector --param=ssp-buffer-size=4 -fPIC -Wno-unused-parameter \
+	--param=ssp-buffer-size=4 -fPIC -Wno-unused-parameter \
 	-pedantic -D_REENTRANT -D_GNU_SOURCE \
 	$(JAVA_INCLUDES)
 
@@ -38,51 +38,49 @@ all: stamps/create-jar stamps/compile-test
 
 .PHONY: clean
 clean:
-		$(RM) -r $(DIRS) $(STAMPS) $(filter %.h,$(JNI_SRC))
-		$(RM) -r $(JNI_DIR)/*.h
-		$(RM) -r $(JNI_DIR)/*.gch
-		find . -name "*.class" -exec rm {} \;  
+	$(RM) -r $(DIRS) $(STAMPS) $(filter %.h,$(JNI_SRC))
+	$(RM) -r $(JNI_DIR)/*.h
+	$(RM) -r $(JNI_DIR)/*.gch
+	find . -name "*.class" -exec rm {} \;  
 
 stamps/dirs:
-		mkdir $(DIRS)
-		@touch $@
+	mkdir $(DIRS)
+	@touch $@
 
 stamps/compile-src: stamps/dirs $(JAVA_SRC)
-	@echo "JAVAC JAVA"
-	$(JAVAC) $(JAVAC_FLAGS) -d $(JAVA_DEST) $(sort $(JAVA_SRC))
+	$(call msg,JAVAC JAVA,$@)
+	$(Q)$(JAVAC) $(JAVAC_FLAGS) -d $(JAVA_DEST) $(sort $(JAVA_SRC))
 	@touch $@
 
 stamps/compile-test: stamps/compile-src $(JAVA_TEST_SRC)
-	$(JAVAC) $(JAVAC_FLAGS) -cp $(JAVA_DEST) -d $(JAVA_TEST_DEST) \
-	$(sort $(JAVA_TEST_SRC))
+	$(Q)$(JAVAC) $(JAVAC_FLAGS) -cp $(JAVA_DEST) -d $(JAVA_TEST_DEST) $(sort $(JAVA_TEST_SRC))
 	@touch $@
 
 stamps/generate-jni-h: stamps/compile-src
-	@echo "GEN HEADER"
-	$(JAVAH) classes src/io/openems/edge/socketcan/driver/CanSocket.java 
+	$(call msg,GEN HEADER,$@)
+	$(Q)$(JAVAH) classes $(sort $(JAVA_SRC))
 	@touch $@
 
-stamps/compile-jni-4: stamps/generate-jni-h $(JNI_SRC)
-	@echo "CC JNI Linux v4"
-	$(CXX) $(CXXFLAGS) -I./include/linux-4.19 $(LDFLAGS) -shared -o $(LIB_DEST)/lib$(SONAME)_linux4.so \
+stamps/compile-native-x86_64: stamps/generate-jni-h $(JNI_SRC)
+	$(call msg,CXX JNI Linux x86/64,$@)
+	$(Q)$(CXX) -target x86_64-linux-gnu $(CXXFLAGS) $(LDFLAGS) -shared -o $(LIB_DEST)/x86_64/lib$(SONAME).so \
 		$(sort $(filter %.cpp,$(JNI_SRC)) $(filter %.c,$(JNI_SRC)))
 	@touch $@
 
-stamps/compile-jni-5: stamps/generate-jni-h $(JNI_SRC)
-	@echo "CC JNI Linux v5"
-	$(CXX) $(CXXFLAGS) -I./include/linux-5.10 $(LDFLAGS) -shared -o $(LIB_DEST)/lib$(SONAME)_linux5.so \
+stamps/compile-native-armv7a: stamps/generate-jni-h $(JNI_SRC)
+	$(call msg,CXX JNI Linux ARM,$@)
+	$(Q)$(CXX) -target arm-linux-gnueabihf $(CXXFLAGS) $(LDFLAGS) -shared -o $(LIB_DEST)/armv7a/lib$(SONAME).so \
 		$(sort $(filter %.cpp,$(JNI_SRC)) $(filter %.c,$(JNI_SRC)))
-	@touch $@        
-
-stamps/create-jar: stamps/compile-jni-4 stamps/compile-jni-5 $(JAR_MANIFEST_FILE)
-	@echo "$(java -version)"
-	@echo "JAVAC JAR"
-	$(JAR) cMf $(JAR_DEST_FILE) $(JAR_MANIFEST_FILE) lib -C $(JAVA_DEST) .
-	$(JAR) cMf $(JAR_DEST_FILE) $(JAR_MANIFEST_FILE) lib -C $(JAVA_DEST) .
 	@touch $@
 
-.PHONY: check
-check: stamps/create-jar stamps/compile-test
+stamps/create-jar: stamps/compile-native-x86_64 stamps/compile-native-armv7a $(JAR_MANIFEST_FILE)
+	$(call msg,$(java -version),$@)
+	$(call msg,JAVAC JAR,$@)
+	$(Q)$(JAR) cMf $(JAR_DEST_FILE) $(JAR_MANIFEST_FILE) lib -C $(JAVA_DEST) .
+	@touch $@
+
+.PHONY: test
+test: stamps/create-jar stamps/compile-test
 		$(JAVA) -ea -cp $(JAR_DEST_FILE):$(JAVA_TEST_DEST) \
                 -Xcheck:jni \
 				io.openems.edge.socketcan.driver.CanSocketTest

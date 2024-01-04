@@ -19,34 +19,13 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Pattern;
-
-//import org.apache.log4j.Logger;
 
 public final class CanSocket implements Closeable {
-	// private static Logger log = Logger.getLogger(CanSocket.class);
 	static {
-		Pattern v5pattern = Pattern.compile("4\\.\\d+");
-		String LIB_JNI_SOCKETCAN;
-		if (v5pattern.matcher(System.getProperty("os.version")).find()) {
-			LIB_JNI_SOCKETCAN = "jni_socketcan_linux4";
-		} else {
-			LIB_JNI_SOCKETCAN = "jni_socketcan_linux5";
+		boolean libraryLoaded = StaticLibLoaderUtils.loadLibraryFromJarWithOSDetection("/lib", "jni_socketcan");
+		if (libraryLoaded) {
+			System.out.println("Succesfully loaded native linux library from JAR.");
 		}
-		System.out.println("Java detected OS version: " + LIB_JNI_SOCKETCAN);
-		try {
-			System.out.println("Try load from system path...");
-			System.loadLibrary(LIB_JNI_SOCKETCAN);
-		} catch (final UnsatisfiedLinkError e) {
-			try {
-				System.out.println("Try load from JAR...");
-				loadLibFromJar(LIB_JNI_SOCKETCAN);
-			} catch (final IOException _e) {
-				System.out.println("ERROR: Cannot load CanSocket native library");
-				throw new UnsatisfiedLinkError(LIB_JNI_SOCKETCAN);
-			}
-		}
-		System.out.println("Succesfully loaded native library");
 	}
 
 	private static void copyStream(final InputStream in, final OutputStream out) throws IOException {

@@ -40,3 +40,4 @@ stamps
 /bintest/
 classes/io_openems_edge_socketcan_driver_CanSocket.h
 *.jar
+zig
