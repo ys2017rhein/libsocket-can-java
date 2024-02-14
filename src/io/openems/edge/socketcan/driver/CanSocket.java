@@ -24,7 +24,9 @@ public final class CanSocket implements Closeable {
 	static {
 		boolean libraryLoaded = StaticLibLoaderUtils.loadLibraryFromJarWithOSDetection("/lib", "jni_socketcan");
 		if (libraryLoaded) {
-			System.out.println("Succesfully loaded native linux library from JAR.");
+			System.err.println("Succesfully loaded native linux library from JAR.");
+		} else {
+			System.err.println("Not able to find and load native library.");
 		}
 	}
 

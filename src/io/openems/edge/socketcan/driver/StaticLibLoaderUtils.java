@@ -38,13 +38,11 @@ public final class StaticLibLoaderUtils {
      * @param folder the base name of the library which is then translated to system names socketcan is translated
      *               to socketcan.dll on windows or libsocketcan.dynlib on macOS or libsocketcan.so on Linux.
      * @return True if the library is loaded successfully
+	 * @throws URISyntaxException 
      */
     public static boolean loadLibraryFromJarWithOSDetection(String folder,String libraryName) {
         String systemLibraryName = System.mapLibraryName(libraryName);
         List<String> foundLibraries;
-
-        System.err.print("Trying to find libraries " + libraryName + " in folder " + folder);
-
         try {
             foundLibraries = listResources(folder);
         } catch (URISyntaxException | IOException e) {
@@ -52,19 +50,18 @@ public final class StaticLibLoaderUtils {
         }
 
         if(foundLibraries.size() == 0 ){
-            System.err.print("No native JNI libraries found in JAR archive");
+            System.err.println("No native JNI libraries found in JAR archive");
         }
         for(String resourceName : foundLibraries){
-            System.out.println("Found resource " + resourceName);
             if(resourceName.contains(systemLibraryName)){
 
-                System.err.println("Try to load JNI library " + resourceName + " from JAR archive.");
+                // System.err.println("Try to load JNI library " + resourceName + " from JAR archive.");
                 try{
                     StaticLibLoaderUtils.loadLibraryFromJar(resourceName);
                     System.err.println("Native library library " + resourceName + " loaded!");
                     return true;
                 } catch (IOException | UnsatisfiedLinkError e){
-                    System.err.println("Failed to load library " + resourceName  + " potentially attempting others.\n" + e.getMessage());
+                    // System.err.println("Failed to load library " + resourceName  + " potentially attempting others.\n" + e.getMessage());
                 }
             }
         }
@@ -80,33 +77,7 @@ public final class StaticLibLoaderUtils {
      * @throws IOException When reading goes wrong.
      */
     private static List<String> listResources(String path) throws URISyntaxException, IOException {
-
-        List<String> filenames = new ArrayList<>();
-
-        URI uri = StaticLibLoaderUtils.class.getResource(path).toURI();
-
-        if (uri.getScheme().equals("jar")) {
-            //List the files in the directory for JAR files
-            Path myPath;
-            FileSystem fileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object>emptyMap());
-            myPath = fileSystem.getPath(path);
-            Stream<Path> walk = Files.walk(myPath, 2);
-            for (Iterator<Path> it = walk.iterator(); it.hasNext();){
-                filenames.add(it.next().toString());
-            }
-            walk.close();
-        } else {
-            //List the files in the resources folder in the IDE / gradle
-            try (InputStream in = new StaticLibLoaderUtils().getClass().getResourceAsStream(path);
-                 BufferedReader br = new BufferedReader(new InputStreamReader(in))) {
-                String resource;
-                while ((resource = br.readLine()) != null) {
-                    filenames.add(path +  File.separator + resource);
-                }
-            }
-        }
-        Collections.sort(filenames);
-        return filenames;
+        return List.of(path + "/armv7a/libjni_socketcan.so", path + "/x86_64/libjni_socketcan.so");
     }
 
     /**
@@ -148,7 +119,7 @@ public final class StaticLibLoaderUtils {
 
         try (InputStream is = StaticLibLoaderUtils.class.getResourceAsStream(path)) {
             Files.copy(is, temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            System.err.println("Copied library to " + temp.getAbsolutePath() + " delete after use.");
+            // System.err.println("Copied library to " + temp.getAbsolutePath() + " delete after use.");
         } catch (IOException e) {
             temp.delete();
             throw e;

@@ -1,6 +1,7 @@
 SHELL=/bin/bash
 CXX=./zig/zig c++
 NAME:=libsocket-can-java
+# JAVA_HOME:=/snap/openjdk/1610/jdk
 JAVA_HOME:=/usr/lib/jvm/java-17-openjdk-amd64/
 
 JAVA_INCLUDES=-I$(JAVA_HOME)/include/linux -I$(JAVA_HOME)/include
@@ -21,6 +22,7 @@ DIRS=stamps obj $(JAVA_DEST) $(JAVA_TEST_DEST) $(LIB_DEST)/x86_64 $(LIB_DEST)/ar
 JNI_DIR=jni
 JNI_CLASSES=io.openems.edge.socketcan.driver.CanSocket
 JAVAC_FLAGS=-g -Xlint:all
+# Note: add -fstack-protector once zig 0.12 is available
 CXXFLAGS=-Iclasses -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions \
 	--param=ssp-buffer-size=4 -fPIC -Wno-unused-parameter \
 	-pedantic -D_REENTRANT -D_GNU_SOURCE \
@@ -65,12 +67,14 @@ stamps/compile-native-x86_64: stamps/generate-jni-h $(JNI_SRC)
 	$(call msg,CXX JNI Linux x86/64,$@)
 	$(Q)$(CXX) -target x86_64-linux-gnu $(CXXFLAGS) $(LDFLAGS) -shared -o $(LIB_DEST)/x86_64/lib$(SONAME).so \
 		$(sort $(filter %.cpp,$(JNI_SRC)) $(filter %.c,$(JNI_SRC)))
+	execstack -c $(LIB_DEST)/x86_64/lib$(SONAME).so
 	@touch $@
 
 stamps/compile-native-armv7a: stamps/generate-jni-h $(JNI_SRC)
 	$(call msg,CXX JNI Linux ARM,$@)
 	$(Q)$(CXX) -target arm-linux-gnueabihf $(CXXFLAGS) $(LDFLAGS) -shared -o $(LIB_DEST)/armv7a/lib$(SONAME).so \
 		$(sort $(filter %.cpp,$(JNI_SRC)) $(filter %.c,$(JNI_SRC)))
+	execstack -c $(LIB_DEST)/armv7a/lib$(SONAME).so
 	@touch $@
 
 stamps/create-jar: stamps/compile-native-x86_64 stamps/compile-native-armv7a $(JAR_MANIFEST_FILE)
