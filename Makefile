@@ -2,7 +2,7 @@ SHELL=/bin/bash
 CXX=./zig/zig c++
 NAME:=libsocket-can-java
 # JAVA_HOME:=/snap/openjdk/1610/jdk
-JAVA_HOME:=/usr/lib/jvm/java-17-openjdk-amd64/
+JAVA_HOME:=/usr/lib/jvm/java-17-openjdk-amd64
 
 JAVA_INCLUDES=-I$(JAVA_HOME)/include/linux -I$(JAVA_HOME)/include
 JAVA=$(JAVA_HOME)/bin/java
